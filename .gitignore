@@ -1,0 +1,11 @@
+*.o
+*.swp
+*.nam
+*.sfd
+*.txt
+tags
+docs/
+glyphRen
+res
+run
+tests/
