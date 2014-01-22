@@ -33,7 +33,9 @@ using namespace std;
 //! \file glyphRen.cc Rename glyphs in SFD file
 //!	\brief Rename the glyphs in a SFD file based on a standard file.
 //!
-//! Usage : glypRen -r referenceFile -i inputSFDName -o outputSFDName
+//! Usage : glyphRen -r referenceFile -i inputSFDName -o outputSFDName
+//!		-l : Log level (DBG or TRACE)
+//!		-h : Display the help screen
 //!
 //!	1. Read the code points and the standard values from the Reference file.
 //!	2. Read all Unicode characters and the names into the list	
@@ -71,7 +73,6 @@ int main (int argc, char **argv)
 
 	// Process the command line arguments.
 	processArgs (argc, argv, inFile, outFile, refFile, logLvl);
-	jLOG ("inFile = " << inFile);
 	if (logLvl == "DBG")
 	{
 		SETMSGLVL (DBG);
@@ -85,14 +86,7 @@ int main (int argc, char **argv)
 		SETMSGLVL (LOG);
 	}
 
-	/*
-	if (argc != 4)
-	{
-		jERR ("Usage : " << argv[0] <<
-			"referenceFile inputSFDName outputSFDName");
-		return (2);
-	}
-	*/
+	jTRACE ("inFile = " << inFile);
 
 	//! Vector that hold the ref data from the file.
 	vector<CharRefData> vRefData(REF_UNICODE_CHARS);
@@ -116,6 +110,7 @@ int main (int argc, char **argv)
 	}
 
 	// Print the data from the reference list
+	jTRACE ("Data from the reference list");
 	for (unsigned int i = 0; i < vRefData.size(); i++)
 	{
 		jTRACE (vRefData[i].getCharName() << ":"
@@ -222,6 +217,7 @@ int loadReferenceData (char *refFile, vector<CharRefData>& ref)
 			return (FAIL);
 		}
 
+		// TODO : The start and end values can come from command line.
 		//! Add the characters only if they belong to Malayalam
 		if ( (codeValue >= ML_CODE_PT_START) && (codeValue <= ML_CODE_PT_END))
 		{
@@ -533,12 +529,12 @@ int storeLigature (string sfdData, Ligature& sfdLigature)
 //! -# Composite glyphs will be renamed based on the constituent ligatures.
 //! The name of the constituent glyphs will be combined to form the new name
 //! of the composite glyph.
-//! -# The name corresponding to the Virama will be excluded from the new
-//! name of composite glyphs.
 //! -# If there are multiple ligatures for a composite glyph, the one
 //! with akhn will be used.
 //! -# In case of a tie, the ligature with maximum glyphs will be used
 //! for the creation of the new name
+//! -# If the derived new name is already used in the SFD file, a 'j'
+//! will be appended to the new name to avoid conflicts.
 int renameGlyphs (vector<CharRefData> vRefData,
 	vector <FontChar>& vFontChar, map<string, string>& nameMap, int& renCount)
 {
@@ -674,7 +670,7 @@ int renameGlyphs (vector<CharRefData> vRefData,
 			tForm = tLig.getForm ();
 			jTRACE ("Processing form [" << tForm << "]");
 
-			// Check if all the glyhps are renamed.
+			// Check if all the glyphs are renamed.
 			unsigned int glyphCount = tLig.getGlypListSize ();
 			int newCount;
 			newCount = 0;
@@ -763,9 +759,14 @@ int renameGlyphs (vector<CharRefData> vRefData,
 			if (dupRet == FAIL)
 			{
 				jLOG ("[" << newName << "] already taken, appending j");
+				// TODO : Find a better way to arrive at the new name.
 				newName.append ("j");
+				// TODO : Check if this name is taken.
 			}
 			nameMap[curName] = newName;
+
+			// Set the new name.
+			vFontChar[i].setNewName (newName);
 			renCount++;
 		}
 		else
@@ -792,6 +793,9 @@ int renameGlyphs (vector<CharRefData> vRefData,
 					newName.append ("j");
 				}
 				nameMap[curName] = newName;
+				
+				// Set the new name.
+				vFontChar[i].setNewName (newName);
 				renCount++;
 			}else
 			{
@@ -806,6 +810,9 @@ int renameGlyphs (vector<CharRefData> vRefData,
 					newName.append ("j");
 				}
 				nameMap[curName] = newName;
+				
+				// Set the new name.
+				vFontChar[i].setNewName (newName);
 				renCount++;
 			}
 		}
@@ -813,11 +820,13 @@ int renameGlyphs (vector<CharRefData> vRefData,
 	jLOG ("renameGlyphs() : Finished processing the Ligatures");
 	showMap (nameMap);
 
+	/*
 	for (i = 0; i < vFontChar.size (); i++)
 	{
-		// vFontChar[i].displayData ();
-		// vFontChar[i].displayGlyphs ();
+		vFontChar[i].displayData ();
+		vFontChar[i].displayGlyphs ();
 	}
+	*/
 
 	return SUCCESS;
 }
@@ -879,7 +888,7 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 			zFlag++;
 
 			//! Check if this is a chillu - glyph + xx + zwj. If true, rename
-			//! glypy to glyph + chil
+			//! glyph to glyph + chil
 
 			if ( (i == 2) && (cFlag == 1) && (comps.size() == 3))
 			{
@@ -928,8 +937,8 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 //! \fn int writeNewSFD (char *inSfdName, char *outFname, vector <FontChar>& vFontChar, map<string, string> nameMap)
 //! \brief Read the input SFD file and create new SFD file with new glyph names.
 //!
-//! Read the input SFD file and and rename the glyphs using the lookup table.
-//! \param [in] inSfdName Name of the inpupt SFD file.
+//! Read the input SFD file and and rename the glyphs using the look up table.
+//! \param [in] inSfdName Name of the input SFD file.
 //! \param [in] outFname Name of the output SFD file.
 //! \param [in] vFontChar FontChar vector
 //! \param [in] nameMap The lookup table for new glyph names.
@@ -1049,7 +1058,7 @@ int replaceGlyphNames (map<string, string> nameMap, string& sfdData)
 	string t;
 	int i = 1;
 	//! Store the glyph names in the map. The map is used so that only
-	//! unique values will be strored.
+	//! unique values will be stored.
 	while (getTok (glyphNames, t, ' ', i) == SUCCESS)
 	{
 		if (t.length() != 0)
@@ -1149,7 +1158,7 @@ void help (char *progName)
 
 //! \fn int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFile, string& lvl)
 //! \brief Process and validate the input arguments and parameters.
-//! Process and validate the input argruments and parameters. The program
+//! Process and validate the input arguments and parameters. The program
 //! expects three mandatory parameters - -i, -o and -r.
 //! \param [in] argc argc from main().
 //! \param [in] argv argv from main().
@@ -1172,7 +1181,7 @@ int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFi
 	int helpFlag = 0;
 	int c = 0;
 	int optIdx = 0;
-	strcpy (inFile, "Prime");
+
 	while (1)
 	{
 		c = getopt_long (argc, argv, "i:o:r:l:h", glyphOptions, &optIdx);
@@ -1221,18 +1230,25 @@ int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFi
 			exit (1);
 		}
 
-		// TODO Validate the parameters.
+		// TODO : Validate the parameters.
 	}
 	return SUCCESS;
 }
 
-
+//! \fn int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
+//! \brief Check if the new name is already taken
+//! \param [in] vFontChar FontChar vector
+//! \param [in] idx Index of the glyph in FontChar vector.
+//! \param [in] newName The new name for the glyph.
+//! \returns FAIL if the name is already in use.
 int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
 {
 
 	string fcCurName;
 	string fcNewName;
 	jTRACE ("Checking for existing name");
+	
+	//! Search through the FontChar vector.
 	for (unsigned int i = 0; i < vFontChar.size (); i++)
 	{
 		if (i == idx)
@@ -1241,13 +1257,24 @@ int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
 			jDBG ("Skipping " << i);
 			continue;
 		}
+
+		//! Check both current and new name of the glyphs.
 		fcCurName = vFontChar[i].getCurName();
+		fcNewName = vFontChar[i].getNewName();
 		if (fcCurName == newName )
 		{
+			//! If found being used, return fail.
 			jDBG ("Name already exists [" << fcCurName << "] at " << i);
+			return FAIL;
+		}
+
+		if (fcNewName == newName )
+		{
+			jDBG ("Name already exists [" << fcNewName << "] at " << i);
 			return FAIL;
 		}
 	}
 	
+	//! The new name is not being used, return SUCCESS.
 	return SUCCESS;
 }

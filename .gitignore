@@ -3,6 +3,7 @@
 *.nam
 *.sfd
 *.txt
+*.bak
 tags
 docs/
 glyphRen

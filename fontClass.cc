@@ -140,7 +140,6 @@ void FontChar::clearData (void)
 	ligatureList.clear ();
 }
 
-/*
 //! Set method for new name
 void FontChar::setNewName (string name)
 {
@@ -153,7 +152,6 @@ string FontChar::getNewName (void)
 {
 	return newName;
 }
-*/
 
 //! Display method for FontChars
 void FontChar::displayData (void)

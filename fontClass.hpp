@@ -112,13 +112,11 @@ public:
 	//! Display the glyp data in a diffrent format
 	void displayGlyphs (void);
 
-	/*
 	//! Set method for new name
 	void setNewName (string name);
 
 	//! Get method for new name
 	string getNewName (void);
-	*/
 
 	//! Load the glyph name to the map.
 	int loadMap (map<string, string>& nameMap);
@@ -133,7 +131,7 @@ private:
 	int endPos; //!< End position of the char in SFD
 	int unicodeVal; //!< Code point of the character
 	string curName; //!< Current name of the glyph
-	// string newName; //!< New name of the glyph
+	string newName; //!< New name of the glyph
 
 	vector<Ligature> ligatureList; //!< Ligature list.
 };
