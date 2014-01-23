@@ -71,6 +71,10 @@ int main (int argc, char **argv)
 	char refFile[PATH_MAX];
 	string logLvl;
 
+	memset (inFile, '\0', PATH_MAX);	
+	memset (outFile, '\0', PATH_MAX);	
+	memset (refFile, '\0', PATH_MAX);	
+
 	// Process the command line arguments.
 	processArgs (argc, argv, inFile, outFile, refFile, logLvl);
 	if (logLvl == "DBG")
@@ -755,14 +759,14 @@ int renameGlyphs (vector<CharRefData> vRefData,
 			buildName (nameMap, nameComps, newName);
 			jDBG ("Adding [" << curName << "] and [" << newName <<
 					"]to the map");
-			dupRet = checkDups (vFontChar, i, newName);
-			if (dupRet == FAIL)
+			do
 			{
+				dupRet = checkDups (vFontChar, i, newName);
 				jLOG ("[" << newName << "] already taken, appending j");
 				// TODO : Find a better way to arrive at the new name.
 				newName.append ("j");
-				// TODO : Check if this name is taken.
-			}
+			} while (dupRet == FAIL);
+
 			nameMap[curName] = newName;
 
 			// Set the new name.
@@ -875,10 +879,14 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 
 	for (i = 0; i < comps.size(); i++)
 	{
-		if (comps[i] == "xxx")
+		if (comps[i] == "xxx") // bypassing the check.
 		{
 			// Skip xx
 			continue;
+
+			// TODO The xx of Virama causes long names. If they are skipped,
+			// the resulting names may conflict with existing names. Need to
+			// find a sollution for this.
 		}
 		jDBG ("Finding new name for " << comps[i]);
 		// Check for Chillu & ZWJ
@@ -946,9 +954,6 @@ int writeNewSFD (char *inSfdName, char *outFname, vector <FontChar>& vFontChar, 
 {
 	string sfdData; // Data read from the input SFD file.
 	string srchPattern; // Search pattern
-	string glyphName; 
-	string newName; // New name of the glyph
-
 
 	ifstream inSfdFile (inSfdName);
 	size_t strPos;
@@ -1230,7 +1235,24 @@ int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFi
 			exit (1);
 		}
 
-		// TODO : Validate the parameters.
+	}
+
+	if (strlen (inFile) == 0)
+	{
+		jERR ("Input SFD file not specified, try " << argv[0] << " -h");
+		exit (1);
+	}
+
+	if (strlen (outFile) == 0)
+	{
+		jERR ("Output SFD file not specified, try " << argv[0] << " -h");
+		exit (1);
+	}
+
+	if (strlen (refFile) == 0)
+	{
+		jERR ("Reference file not specified, try " << argv[0] << " -h");
+		exit (1);
 	}
 	return SUCCESS;
 }
