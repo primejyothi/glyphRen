@@ -9,8 +9,11 @@ The program reads a reference file that contain Malayalam Unicode code points an
 
 #### Running glyphRen
 glyphRen -r referenceFile -i inputSFDName -o outputSFDName
+
 	-l : Log level (DBG or TRACE)
+
 	-h : Display the help screen
-The reference file is a plain text file which contains the Unicode code point values in hex and the corresponding names. The fields are separated by spaces and records are separated by new lines.
+
+The reference file is a plain text file which contains the Unicode code point values in hex and the corresponding names. The fields are separated by spaces and records are separated by new lines. The reference file for a font can be generated from the font's SFD file using FontForge (Encoding->Save Namelist of Font).
 
 Currently the reference file is generated from the Rachana font (http://wiki.smc.org.in/Fonts).
