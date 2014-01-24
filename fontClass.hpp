@@ -23,10 +23,10 @@ using namespace std;
 #define REF_UNICODE_CHARS 128
 
 //! Chillu glyph
-#define CHILLU "xx"
+#define VIRAMA "xx"
 
 //! Chillu glyph name
-#define CHILLU_NANE "chillu"
+#define CHILLU_NANE "cil"
 
 //! Zero Width Joiner glyph
 #define ZWJ "ZWJ"

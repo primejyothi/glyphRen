@@ -14,6 +14,9 @@
  * is an attempt to rename the Malayalam glyphs in SFD files based on a
  * standard naming convention.
  *
+ * \par Acknowledgment 
+ * Thanks to Rajeesh K Nambiar, who taught me the first glyphs of Malayalam fonts.
+ *
  */
 
 using namespace std;
@@ -60,6 +63,7 @@ int replaceGlyphNames (map<string, string> nameMap, string& sfdData);
 void help (char *progName);
 int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFile, string& lvl);
 int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName);
+int processHalfForms (string curName, string newName, string& hName);
 
 //! \fn int main (int argc, char **argv)
 //! \brief Starting point of glyphRen.
@@ -587,7 +591,7 @@ int renameGlyphs (vector<CharRefData> vRefData,
 	}
 
 	//! Chil is xx, zero width joiner is ZWJ, add them to the rename map.
-	nameMap[CHILLU] = CHILLU;
+	nameMap[VIRAMA] = VIRAMA;
 	nameMap[ZWJ] = ZWJ;
 	jLOG ("renameGlyphs() : Finished processing base characters");
 	showMap (nameMap);
@@ -620,6 +624,7 @@ int renameGlyphs (vector<CharRefData> vRefData,
 		vector<string> nameComps;
 		vector<string> akhnComps;
 		vector<string> maxComps;
+		vector<string> finalComps;
 
 		int maxCount; // Maximum glyphs in a ligature
 		int copyToMax;
@@ -756,22 +761,7 @@ int renameGlyphs (vector<CharRefData> vRefData,
 		{
 			// Only one form, straight away rename.
 			jDBG ("Straight rename");
-			buildName (nameMap, nameComps, newName);
-			jDBG ("Adding [" << curName << "] and [" << newName <<
-					"]to the map");
-			do
-			{
-				dupRet = checkDups (vFontChar, i, newName);
-				jLOG ("[" << newName << "] already taken, appending j");
-				// TODO : Find a better way to arrive at the new name.
-				newName.append ("j");
-			} while (dupRet == FAIL);
-
-			nameMap[curName] = newName;
-
-			// Set the new name.
-			vFontChar[i].setNewName (newName);
-			renCount++;
+			finalComps = nameComps;
 		}
 		else
 		{
@@ -787,39 +777,49 @@ int renameGlyphs (vector<CharRefData> vRefData,
 			if (akhnFlag)
 			{
 				jDBG ("Multiple ligatures, akhn form being added");
-				buildName (nameMap, akhnComps, newName);
-				jDBG ("Adding [" << curName << "] and [" << newName <<
-						"]to the map");
-				dupRet = checkDups (vFontChar, i, newName);
-				if (dupRet == FAIL)
-				{
-					jLOG ("[" << newName << "] already taken, appending j");
-					newName.append ("j");
-				}
-				nameMap[curName] = newName;
-				
-				// Set the new name.
-				vFontChar[i].setNewName (newName);
-				renCount++;
+				finalComps = akhnComps;
 			}else
 			{
 				jDBG ("Multiple ligatures, max being added");
-				buildName (nameMap, maxComps, newName);
-				jDBG ("Adding [" << curName << "] and [" << newName <<
-						"]to the map");
-				dupRet = checkDups (vFontChar, i, newName);
-				if (dupRet == FAIL)
-				{
-					jLOG ("[" << newName << "] already taken, appending j");
-					newName.append ("j");
-				}
-				nameMap[curName] = newName;
-				
-				// Set the new name.
-				vFontChar[i].setNewName (newName);
-				renCount++;
+				finalComps = maxComps;
 			}
 		}
+
+		buildName (nameMap, finalComps, newName);
+		do
+		{
+			jTRACE ("Calling checkDups");
+			jTRACE ("Current glyph is [" << curName << "]");
+			dupRet = checkDups (vFontChar, i, newName);
+			if (dupRet == FAIL)
+			{
+				// Special processing required for some half forms.
+				int retVal;
+				string hName;
+				retVal = processHalfForms (curName, newName, hName);
+				if (retVal == SUCCESS)
+				{
+					// It was one of those cases that required special processing.
+					newName = hName;
+
+					dupRet = SUCCESS; // Break out of the checkDups loop.
+				}
+				else
+				{
+					jLOG ("[" << newName
+						<< "] already taken, appending j");
+					// TODO : Find a better way to arrive at the new name.
+					newName.append ("j");
+				}
+			}
+		} while (dupRet == FAIL);
+		jDBG ("Adding [" << curName << "] and [" << newName <<
+				"]to the map");
+		nameMap[curName] = newName;
+		
+		// Set the new name.
+		vFontChar[i].setNewName (newName);
+		renCount++;
 	}
 	jLOG ("renameGlyphs() : Finished processing the Ligatures");
 	showMap (nameMap);
@@ -879,19 +879,9 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 
 	for (i = 0; i < comps.size(); i++)
 	{
-		if (comps[i] == "xxx") // bypassing the check.
-		{
-			// Skip xx
-			continue;
-
-			// TODO The xx of Virama causes long names. If they are skipped,
-			// the resulting names may conflict with existing names. Need to
-			// find a sollution for this.
-		}
 		jDBG ("Finding new name for " << comps[i]);
 		// Check for Chillu & ZWJ
-		// if (comps[i] == ZWJ)
-		if (comps[i] == "xZWJ") // bypassing the check
+		if (comps[i] == ZWJ)
 		{
 			zFlag++;
 
@@ -900,14 +890,14 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 
 			if ( (i == 2) && (cFlag == 1) && (comps.size() == 3))
 			{
-				jDBG ("Found chillu comibination for" << comps[0]);
+				jDBG ("Found chillu comibination for " << comps[0]);
 				out = comps[0];
 				out.append (CHILLU_NANE);
 			}
 			continue;
 		}
-		// if (comps[i] == CHILLU)
-		if (comps[i] == "xCHILLU") // bypassing the check
+
+		if (comps[i] == VIRAMA)
 		{
 			//! If there are only two glyphs and the 2nd one is xx, retain it.
 			cFlag++;
@@ -915,10 +905,16 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 			if ( (i == 1) && (comps.size() == 2))
 			{
 				out = comps[0];
-				out.append (CHILLU);
+				out.append (VIRAMA);
 			}
 			continue;
 		}
+		if (comps[i] == VIRAMA) 
+		{
+			// Skip xx
+			continue;
+		}
+
 		mappedName = nameMap[(comps[i])];
 		if (mappedName.length() != 0)
 		{
@@ -1268,7 +1264,7 @@ int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
 
 	string fcCurName;
 	string fcNewName;
-	jTRACE ("Checking for existing name");
+	jTRACE ("Checking for existing name [" << newName << "]");
 	
 	//! Search through the FontChar vector.
 	for (unsigned int i = 0; i < vFontChar.size (); i++)
@@ -1298,5 +1294,39 @@ int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
 	}
 	
 	//! The new name is not being used, return SUCCESS.
+	jTRACE ("checkDups returning SUCCESS");
 	return SUCCESS;
+}
+
+//! \fn int processHalfForms (string curName, string newName, string& hName)
+//! \brief Alternate naming method for some special glyphs
+//! \param [in] curName Current glyph name.
+//!	\param [in] newName New name built for the glyph.
+//! \param [out] hName The final new name.
+//! \returns SUCCESS if alternate name is found.
+//! \returns FAIL if alternate name is not found.
+
+int processHalfForms (string curName, string newName, string& hName)
+{
+	map<string, string> specials;
+
+	jTRACE ("processHalfForms [" << curName << "] [" << newName <<"]");
+
+	specials["y1"] = "y2";
+	specials["y1xx"] = "y2";
+	specials["r3"] = "r4";
+	specials["r3xx"] = "r4";
+	specials["l3"] = "l4";
+	specials["l3xx"] = "l4";
+	specials["v1"] = "v2";
+	specials["v1xx"] = "v2";
+
+	if (specials[newName] == curName)
+	{
+		hName = curName;
+		jTRACE ("Setting special to [" << hName << "]");
+		return SUCCESS;
+	}
+
+	return FAIL;
 }
