@@ -8,9 +8,6 @@
 # The md5sum of the resulting images are compared to find if there is any
 # difference in rendering.
 
-# Prime Jyothi 20140124
-# primejyothi [at] gmail [dot] com
-
 # Log functions
 . logs.sh
 
@@ -67,12 +64,14 @@ do
 	glyphRen -l TRACE -r $refFile -i $fontFile -o ${newSFD} > ${fontName}.log
 
 	# Generate the fonts.
+	# generate.pe "$fontFile" > /dev/null 2>&1
+
+	log $LINENO "Generating font for $newSFD"
+	# generate.pe "${newSFD}" > /dev/null 2>&1
 
 	export FONTFORGE_LANGUAGE=ff
 	log $LINENO "Generating font for $fontFile"
 	fontforge -c 'Open($1); Generate($2);' $fontFile ${fontName}.ttf 2> /dev/null
-
-	log $LINENO "Generating font for $newSFD"
 	fontforge -c 'Open($1); Generate($2);' $newSFD ${fontName}.j.ttf 2> /dev/null
 
 
@@ -83,15 +82,16 @@ do
 	log $LINENO "Rendering $testData for ${fontName}.j.ttf"
 	hb-view --font-size=20 ${fontName}.j.ttf  < $testData > ${fontName}.j.png
 	echo ""
+
 done < fonts.lst
 
+# Compare the rendering
 while read fontFile
 do
 	fontName=`basename $fontFile .sfd`
 	log $LINENO "Verifying tests results for $fontName"
 
 	refRender=${fontName}.png
-
 	newRender=${fontName}.j.png
 
 	refSum=`md5sum < $refRender`
@@ -106,7 +106,24 @@ do
 	else
 		err $LINENO "$fontName : Rendered different, test failed. =============="
 	fi
+
+	grep StartChar ${fontName}.sfd | sort |uniq -c | sort -n > ${fontName}.count
+	uCount=`grep -c -v "^ *1" ${fontName}.count`
+	dbg $LINENO "uCount = ${uCount}"
+	if [[ "$uCount" -ne "0" ]]
+	then
+		err $LINENO "$fontName.sfd : Multiple StartChars, test failed. =============="
+	fi
+
+	grep StartChar ${fontName}.j.sfd | sort |uniq -c | sort -n > ${fontName}.j.count
+	uCount=`grep -c -v "^ *1" ${fontName}.j.count`
+	dbg $LINENO "uCount = ${uCount}"
+	if [[ "$uCount" -ne "0" ]]
+	then
+		err $LINENO "$fontName.j.sfd : Multiple StartChars, test failed. =============="
+	fi
 	echo ""
+
 done < fonts.lst
 
 rm fonts.lst
