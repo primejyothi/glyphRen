@@ -256,3 +256,10 @@ string CharRefData::getCharName (void)
 	return (charName);
 }
 
+//! Display the CharRefData info
+void CharRefData::displayData (void)
+{
+	jTRACE ("========== CharRefData ==========");
+	jTRACE ("Char Name	: " << getCharName ());
+	jTRACE ("CodePtVal	: " << getCodeptVal ());
+}

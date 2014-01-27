@@ -146,6 +146,8 @@ public :
 
 	int setCharName (string name); //!< set method for charName
 	string getCharName (void); //!< get method for charName
+
+	void displayData (void); //! Display the CharRefData
 private:
 	int codePtVal; //!< Codepoint value of the character
 	string charName; //!< Std(?) Name of the Unicode character

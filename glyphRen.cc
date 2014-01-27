@@ -96,11 +96,11 @@ int main (int argc, char **argv)
 	{
 		SETMSGLVL (LOG);
 	}
+	SETFWDT (13);
 
 	jTRACE ("inFile = " << inFile);
 
-	//! Vector that hold the ref data from the file.
-	// vector<CharRefData> vRefData(REF_UNICODE_CHARS);
+	//! Map that hold the ref data from the file.
 	map<int, CharRefData> vRefData;
 	
 	//! Vector that hold the glyph data from the SFD file.
@@ -227,6 +227,7 @@ int loadReferenceData (char *refFile, map<int, CharRefData>& ref)
 		}
 
 		ref[codeValue] = t;
+		ref[codeValue].displayData ();
 	}
 	stdFile.close ();
 	jLOG ("Finished Loading Reference data");
@@ -381,34 +382,27 @@ int analyzeSFDFile (char *inSfdName, vector<FontChar>& vFontChar)
 		{
 			jTRACE (setw(5) << "Rec# " << lineNo <<  " Processing ["
 				<< sfdData << "]");
-			//! All data corresponding to the glyph is available, check if
-			//! this glyph need to be processed. Process the glyphs which
-			//! having the codeValue within Malayalam code points or -1.
-			//! Code value of -1 indicate that is a composite glyph
 			
-			if ( (codeValue == -1) || ((codeValue >= ML_CODE_PT_START)
-					&& (codeValue <= ML_CODE_PT_END)))
+			//! Save the glyph name into FontChar vector.
+			sfdFC.setCurName (glyphName);
+
+			//! Save the start pos into FontChar vector
+			sfdFC.setStartPos (startPos);
+
+			//! Save the code value into the FontChar vector
+			sfdFC.setUnicodeVal (codeValue);
+
+			//! Save the ligatures to FontChar vector from the 
+			//! temporary Ligature list.
+			for (unsigned int i = 0; i < vLigature.size (); i++)
 			{
-				//! Save the glyph name into FontChar vector.
-				sfdFC.setCurName (glyphName);
-
-				//! Save the start pos into FontChar vector
-				sfdFC.setStartPos (startPos);
-
-				//! Save the code value into the FontChar vector
-				sfdFC.setUnicodeVal (codeValue);
-
-				//! Save the ligatures to FontChar vector from the 
-				//! temporary Ligature list.
-				for (unsigned int i = 0; i < vLigature.size (); i++)
-				{
-					sfdFC.addLigature (vLigature[i]);
-				}
-				vFontChar.push_back (sfdFC);
-				jTRACE (setw(5) << "Rec# " << lineNo << " Added glyph info.");
-
-				// sfdFC.displayData ();
+				sfdFC.addLigature (vLigature[i]);
 			}
+			vFontChar.push_back (sfdFC);
+			jTRACE (setw(5) << "Rec# " << lineNo << " Added glyph info for " <<
+				glyphName << "]");
+
+			sfdFC.displayData ();
 
 			vLigature.clear();
 			sfdFC.clearData ();
@@ -431,7 +425,6 @@ int getTok (string inStr, string& out, char delim, int pos)
 	{
 		if (!getline (s, tok, delim))
 		{
-			// pTRACE ("Returning fail");
 			return FAIL;
 		}
 	}
@@ -508,10 +501,10 @@ int storeLigature (string sfdData, Ligature& sfdLigature)
 	return SUCCESS;
 }
 
-//! \fn int renameGlyphs (vector<CharRefData> vRefData, vector <FontChar>& vFontChar, map<string, string>& nameMap, int& renCount)
+//! \fn int renameGlyphs (map<int, CharRefData> vRefData, vector <FontChar>& vFontChar, map<string, string>& nameMap, int& renCount)
 //! \brief Traverse through the glyph info and identify the glyphs
 //! that need to be renamed.
-//!	\param [in] vRefData Vector containing reference data
+//!	\param [in] vRefData Map containing reference data
 //! \param [in] vFontChar Vector holding SFD glyph data
 //! \param [in] nameMap map holding key value pair of old and new glyph names.
 //! \param [out] renCount Number of renames performed
@@ -540,7 +533,6 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 {
 
 	unsigned int i;
-	int refUniVal;
 
 	string fcName;
 	string refName;
@@ -566,24 +558,17 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 			continue;
 		}
 
-		refUniVal = vRefData[fcUniVal].getCodeptVal ();
 		refName = vRefData[fcUniVal].getCharName ();
 
-		if (fcUniVal != refUniVal)
-		{
-			jERR ("Unicode values do not match, "
-			<< "expecting [" << refUniVal <<
-					"] found [" << fcUniVal << "]");
-			return FAIL;
-		}
 		// Name of character from SFD file and corresponding name from
 		// ref file.
 		nameMap[fcName] = refName;
-	}
 
-	//! Chil is xx, zero width joiner is ZWJ, add them to the rename map.
-	// nameMap[VIRAMA] = VIRAMA;
-	// nameMap[ZWJ] = ZWJ;
+		// Set the new name in the FontChar.
+		vFontChar[i].setNewName (refName);
+		jERR ("Base char " << "old [" << fcName <<
+					"] new [" << refName << "]");
+	}
 
 	for (map <string, string>::iterator i = nameMap.begin ();
 			i != nameMap.end(); ++i)
@@ -617,12 +602,13 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 			jTRACE ("New name found for " << tCurName << ": "
 					<< tNewName);
 			// Set the new name in the FontChar.
+			vFontChar[i].setNewName (tNewName);
 		}
 	}
 	jLOG ("renameGlyphs() : Finished processing the glyphs");
 
-
 	jLOG ("renameGlyphs() : Processing the Ligatures");
+
 	//! Traverse through the glyphs of the Ligatures in the FontChar vector
 	//! and see if any of FontChar glyphs can be renamed.
 	for (unsigned int i = 0; i < vFontChar.size (); i++)
@@ -749,6 +735,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 				{
 					newCount++;
 				}
+				jTRACE ("[" << tGlyphName << "] [" << tNewName << "]");
 			}
 
 			if (newCount == (int) glyphCount)
@@ -794,7 +781,13 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 			}
 		}
 
+		string suffix;
+		int seq;
+		string base;
+		seq = 0;
 		buildName (nameMap, finalComps, newName);
+		base = newName; // Base name, required in case of duplicates.
+		base.append ("_");
 		do
 		{
 			jTRACE ("Calling checkDups");
@@ -804,6 +797,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 			{
 				// Special processing required for some half forms.
 				int retVal;
+
 				string hName;
 				retVal = processHalfForms (curName, newName, hName);
 				if (retVal == SUCCESS)
@@ -817,8 +811,14 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 				{
 					jLOG ("[" << newName
 						<< "] already taken, appending j");
-					// TODO : Find a better way to arrive at the new name.
-					newName.append ("j");
+					seq ++;
+					stringstream ss;
+					ss << seq;
+					suffix = ss.str();
+
+					jTRACE ("Suffix [" << suffix << "]");
+					newName = base;
+					newName.append (suffix);
 				}
 			}
 		} while (dupRet == FAIL);
@@ -902,13 +902,13 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 			if ( (i == 2) && (cFlag == 1) && (comps.size() == 3))
 			{
 				jDBG ("Found chillu comibination for " << comps[0]);
-				out = comps[0];
+				// out = comps[0];
 				out.append (CHILLU_NANE);
 			}
 			continue;
 		}
 
-		// if (comps[i] == "VIRAMA")
+		/*
 		jTRACE ("Virama [" << Virama << "]");
 		if ((comps[i] == "VIRAMA") || (comps[i] == Virama))
 		{
@@ -916,17 +916,21 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 			jTRACE ("Found Virama case");
 			cFlag++;
 
+			jTRACE ("out, before appening virama [" << out << "]");
 			if ( (i == 1) && (comps.size() == 2))
 			{
-				out = comps[0];
+				// out = comps[0];
 				out.append (VIRAMA);
 			}
+			jTRACE ("Appended Virama, now the name is [" << out);
 			continue;
 		}
-		// if ((comps[i] == "VIRAMA") || (comps[i] == Virama))
-		if (comps[i] == VIRAMA) 
+		*/
+
+		if ((comps[i] == "VIRAMA") || (comps[i] == Virama))
 		{
 			// Skip Virama.
+			cFlag++;
 			jTRACE ("Skipping Virama");
 			continue;
 		}
