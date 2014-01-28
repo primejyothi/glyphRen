@@ -566,7 +566,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 
 		// Set the new name in the FontChar.
 		vFontChar[i].setNewName (refName);
-		jERR ("Base char " << "old [" << fcName <<
+		jLOG ("Base char " << "old [" << fcName <<
 					"] new [" << refName << "]");
 	}
 
@@ -849,7 +849,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 //! \brief Display the contents of the Rename map
 void showMap (map<string, string> nameMap)
 {
-	jDBG ("showMap ()");
+	jTRACE ("showMap ()");
 	for (map <string, string>::iterator i = nameMap.begin ();
 			i != nameMap.end(); ++i)
 	{
