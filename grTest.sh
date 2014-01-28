@@ -122,7 +122,13 @@ do
 	then
 		err $LINENO "$fontName.j.sfd : Multiple StartChars, test failed. =============="
 	fi
+
 	echo ""
+	grep "StartChar" ${fontName}.sfd |
+			awk -F": " '{print $2}' > ${fontName}.lst 
+	grep "StartChar" ${fontName}.j.sfd |
+			awk -F": " '{print $2}' > ${fontName}.j.lst 
+	log $LINENO "List of glyphs are listed in *.lst files"	
 
 done < fonts.lst
 
