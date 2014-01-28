@@ -124,12 +124,36 @@ do
 	fi
 
 	echo ""
-	grep "StartChar" ${fontName}.sfd |
-			awk -F": " '{print $2}' > ${fontName}.lst 
-	grep "StartChar" ${fontName}.j.sfd |
-			awk -F": " '{print $2}' > ${fontName}.j.lst 
-	log $LINENO "List of glyphs are listed in *.lst files"	
 
+	
 done < fonts.lst
 
+log $LINENO "Stats against Rachana.j.sfd"
+	grep "StartChar" Rachana.j.sfd |
+			awk -F": " '{print $2}' | sort > Rachana.j.srt
+echo ""
+printf "%s\n" "-----------------------------------------------------------------------------------"
+printf "%-25s |%20s |%15s |%15s |\n" "Fonts v / Glyphs >" "Unique in Rachana" "Unique in Font2" "Common"
+printf "%s\n" "-----------------------------------------------------------------------------------"
+while read fontFile
+do
+	refSrt=Rachana.j.srt
+	fontName=`basename $fontFile .sfd`
+	grep "StartChar" ${fontName}.sfd |
+			awk -F": " '{print $2}' | sort > ${fontName}.srt 
+	uniq1=`comm -23 ${refSrt} ${fontName}.srt | wc -l`
+	uniq2=`comm -13 ${refSrt} ${fontName}.srt | wc -l`
+	common=`comm -12 ${refSrt} ${fontName}.srt | wc -l`
+	printf "%-25s |%20s |%15s |%15s |\n" ${fontName}	${uniq1} ${uniq2} ${common}
+
+
+	grep "StartChar" ${fontName}.j.sfd |
+			awk -F": " '{print $2}' | sort > ${fontName}.j.srt 
+	uniq1=`comm -23 ${refSrt} ${fontName}.j.srt | wc -l`
+	uniq2=`comm -13 ${refSrt} ${fontName}.j.srt | wc -l`
+	common=`comm -12 ${refSrt} ${fontName}.j.srt | wc -l`
+	printf "%-25s |%20s |%15s |%15s |\n" ${fontName}.j ${uniq1} ${uniq2} ${common}
+	printf "%s\n" "-----------------------------------------------------------------------------------"
+
+done < fonts.lst
 rm fonts.lst
