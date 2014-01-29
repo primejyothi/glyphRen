@@ -13,17 +13,8 @@ using namespace std;
 //! Return value for failure
 #define FAIL 1
 
-//! Starting value of Malayalam code point
-#define ML_CODE_PT_START 3328
-
-//! End value of Malayalam code point
-#define ML_CODE_PT_END 3455
-
-//! Number of reference Unicode characters
-#define REF_UNICODE_CHARS 128
-
 //! Chillu glyph
-#define VIRAMA "xx"
+#define CONJUNCT "xx"
 
 //! Chillu glyph name
 #define CHILLU_NANE "cil"

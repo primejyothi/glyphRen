@@ -65,7 +65,10 @@ int processArgs (int argc, char **argv, char *inFile, char *outFile, char *refFi
 int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName);
 int processHalfForms (string curName, string newName, string& hName);
 
-string Virama;
+//! Glyph name from the input SFD corresponding to Conjunct.
+string Conjunct;
+
+//! Glyph name from the input SFD corresponding to ZWJ.
 string Zwj;
 
 //! \fn int main (int argc, char **argv)
@@ -181,7 +184,7 @@ int main (int argc, char **argv)
 //! \fn int loadReferenceData (char *refFile, map<int, CharRefData>& ref)
 //! \brief Load the reference data from the reference file
 //! \param [in] refFile Name of the file containing reference data.
-//! \param [out] ref The CharRefData map that will hold the ref data
+//! \param [out] ref The CharRefData map that will hold the ref data.
 //! \returns SUCCESS if operation is successful.
 //! \returns FAIL if operation is not successful.
 int loadReferenceData (char *refFile, map<int, CharRefData>& ref)
@@ -251,9 +254,9 @@ int hexStrtoInt (string hexVal)
 //! \fn int analyzeSFDFile (char *inSfdName, vector<FontChar>& vFontChar)
 //! \brief Analyze the input SFD file and load the data into FontChar vector.
 //! \param [in] inSfdName Name of the input SFD file.
-//! \param [out] vFontChar vector holding glyph data
-//! \returns SUCCESS if operation is successful
-//! \returns FAIL if operation is not successful
+//! \param [out] vFontChar vector holding glyph data.
+//! \returns SUCCESS if operation is successful.
+//! \returns FAIL if operation is not successful.
 //
 //! The glyphs are enclosed within [StartChar:] and [EndChar] sections. 
 //! Read the SFD file and load the following into FontChar vector:
@@ -513,10 +516,7 @@ int storeLigature (string sfdData, Ligature& sfdLigature)
 //!
 //! Rules of the game:
 //!
-//! -# Only Malayalam glyphs (simple & composite) will be renamed based on
-//! the reference data provided.
-//! -# Glyphs between 0D00 and 0D7F will be renamed as mentioned in the
-//! reference file.
+//! -# Glyphs will be renamed as specified in the reference file.
 //! -# Composite glyphs will be renamed based on the constituent ligatures.
 //! The name of the constituent glyphs will be combined to form the new name
 //! of the composite glyph.
@@ -524,10 +524,13 @@ int storeLigature (string sfdData, Ligature& sfdLigature)
 //! with akhn will be used.
 //! -# In case of a tie, the ligature with maximum glyphs will be used
 //! for the creation of the new name
-//! -# When two or more glyphs are joined to form new glyph name, the Virama
+//! -# When two or more glyphs are joined to form new glyph name, the Conjunct
 //! symbols are ignored to keep the name short and readable.
-//! -# If the derived new name is already used in the SFD file, a 'j'
-//! will be appended to the new name to avoid conflicts.
+//! -# If the derived new name is already used in the SFD file, an underscore
+//! followed by a sequence number will be appended to the new name to
+//! avoid conflicts.
+//! -# Certain glyphs need special processing and they are renamed to 
+//! pre defined names. Refer processHalfForms () for details on such glyphs.
 int renameGlyphs (map<int, CharRefData> vRefData,
 	vector <FontChar>& vFontChar, map<string, string>& nameMap, int& renCount)
 {
@@ -537,8 +540,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 	string fcName;
 	string refName;
 
-	//! Rename the characters that fall between ML_CODE_PT_START 
-	//! and ML_CODE_PT_END. Since the Map and reference data are
+	//! Rename the characters. Since the Map and reference data are
 	//! not directly connected, have to use the data loaded from
 	//! the SFD file.
 
@@ -573,10 +575,10 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 	for (map <string, string>::iterator i = nameMap.begin ();
 			i != nameMap.end(); ++i)
 	{
-		if ((*i).second == VIRAMA)
+		if ((*i).second == CONJUNCT)
 		{
-			Virama = (*i).first;
-			jTRACE ("Virama [" << Virama << "]");
+			Conjunct = (*i).first;
+			jTRACE ("Conjunct [" << Conjunct << "]");
 		}
 
 		if ((*i).second == ZWJ)
@@ -810,7 +812,7 @@ int renameGlyphs (map<int, CharRefData> vRefData,
 				else
 				{
 					jLOG ("[" << newName
-						<< "] already taken, appending j");
+						<< "] already taken, appending seq #");
 					seq ++;
 					stringstream ss;
 					ss << seq;
@@ -867,8 +869,7 @@ void showMap (map<string, string> nameMap)
 //! \param [out] out The string that will hold the new name.
 //!
 //! -# If the strings are glyph + xx + zwj, it is considered as a chillu
-//! and new new name will be glyph + "chillu"
-//! -# If the strings are glyph + xx, the new name would be glyph+xx
+//! and new new name will be glyph + "cil"
 int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 {
 	unsigned int i;
@@ -909,38 +910,38 @@ int buildName (map<string, string> nameMap, vector<string> comps, string& out)
 		}
 
 		/*
-		jTRACE ("Virama [" << Virama << "]");
-		if ((comps[i] == "VIRAMA") || (comps[i] == Virama))
+		jTRACE ("Conjunct [" << Conjunct << "]");
+		if ((comps[i] == "CONJUNCT") || (comps[i] == Conjunct))
 		{
 			//! If there are only two glyphs and the 2nd one is xx, retain it.
-			jTRACE ("Found Virama case");
+			jTRACE ("Found Conjunct case");
 			cFlag++;
 
 			jTRACE ("out, before appening virama [" << out << "]");
 			if ( (i == 1) && (comps.size() == 2))
 			{
 				// out = comps[0];
-				out.append (VIRAMA);
+				out.append (CONJUNCT);
 			}
-			jTRACE ("Appended Virama, now the name is [" << out);
+			jTRACE ("Appended Conjunct, now the name is [" << out);
 			continue;
 		}
 		*/
 
-		if ((comps[i] == "VIRAMA") || (comps[i] == Virama))
+		if ((comps[i] == "CONJUNCT") || (comps[i] == Conjunct))
 		{
-			// Skip Virama.
+			// Skip Conjunct.
 			cFlag++;
-			jTRACE ("Skipping Virama");
+			jTRACE ("Skipping Conjunct");
 			continue;
 		}
 
 		mappedName = nameMap[(comps[i])];
 		if (mappedName.length() != 0)
 		{
-			if (mappedName == VIRAMA)
+			if (mappedName == CONJUNCT)
 			{
-				// Virama, skip it.
+				// Conjunct, skip it.
 				continue;
 			}
 
@@ -1095,7 +1096,8 @@ int replaceGlyphNames (map<string, string> nameMap, string& sfdData)
 		i++;
 	}
 
-	for (map<string, string>::iterator m = glyphComps.begin(); m != glyphComps.end(); ++m)
+	for (map<string, string>::iterator m = glyphComps.begin();
+			m != glyphComps.end(); ++m)
 	{
 		//! Look for the glyphs in the input string.
 		
@@ -1331,6 +1333,18 @@ int checkDups (vector<FontChar>& vFontChar, unsigned int idx, string newName)
 //! \param [out] hName The final new name.
 //! \returns SUCCESS if alternate name is found.
 //! \returns FAIL if alternate name is not found.
+//!
+//! Few glyphs need special naming, they are listed here:
+//! Old Names | New Name
+//! ----------|---------
+//! y1        | y2
+//! y1xx      | y2
+//! r3        | r4
+//! r3xx      | r4
+//! l3        | l4
+//! l3xx      | l4
+//! v1        | v2
+//! v1xx      | v2
 
 int processHalfForms (string curName, string newName, string& hName)
 {
