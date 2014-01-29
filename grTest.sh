@@ -52,6 +52,8 @@ fi
 
 export PATH=$PATH:.
 
+suffix=j
+
 ls *.sfd > fonts.lst
 while read fontFile
 do
@@ -59,7 +61,7 @@ do
 	log $LINENO "Processing $fontName"	
 	
 	# Rename the glyphs.
-	newSFD="${fontName}.j.sfd"
+	newSFD="${fontName}.${suffix}.sfd"
 	log $LINENO "Renaming glyphs in $fontFile"
 	glyphRen -l TRACE -r $refFile -i $fontFile -o ${newSFD} > ${fontName}.log
 
@@ -72,15 +74,15 @@ do
 	export FONTFORGE_LANGUAGE=ff
 	log $LINENO "Generating font for $fontFile"
 	fontforge -c 'Open($1); Generate($2);' $fontFile ${fontName}.ttf 2> /dev/null
-	fontforge -c 'Open($1); Generate($2);' $newSFD ${fontName}.j.ttf 2> /dev/null
+	fontforge -c 'Open($1); Generate($2);' $newSFD ${fontName}.${suffix}.ttf 2> /dev/null
 
 
 	# Render the text
 	log $LINENO "Rendering $testData for ${fontName}.ttf"
 	hb-view --font-size=20 ${fontName}.ttf  < $testData > $fontName.png
 
-	log $LINENO "Rendering $testData for ${fontName}.j.ttf"
-	hb-view --font-size=20 ${fontName}.j.ttf  < $testData > ${fontName}.j.png
+	log $LINENO "Rendering $testData for ${fontName}.${suffix}.ttf"
+	hb-view --font-size=20 ${fontName}.${suffix}.ttf  < $testData > ${fontName}.${suffix}.png
 	echo ""
 
 done < fonts.lst
@@ -92,7 +94,7 @@ do
 	log $LINENO "Verifying tests results for $fontName"
 
 	refRender=${fontName}.png
-	newRender=${fontName}.j.png
+	newRender=${fontName}.${suffix}.png
 
 	refSum=`md5sum < $refRender`
 	dbg $LINENO "Ref sum [$refSum]"
@@ -115,12 +117,12 @@ do
 		err $LINENO "$fontName.sfd : Multiple StartChars, test failed. =============="
 	fi
 
-	grep StartChar ${fontName}.j.sfd | sort |uniq -c | sort -n > ${fontName}.j.count
-	uCount=`grep -c -v "^ *1" ${fontName}.j.count`
+	grep StartChar ${fontName}.${suffix}.sfd | sort |uniq -c | sort -n > ${fontName}.${suffix}.count
+	uCount=`grep -c -v "^ *1" ${fontName}.${suffix}.count`
 	dbg $LINENO "uCount = ${uCount}"
 	if [[ "$uCount" -ne "0" ]]
 	then
-		err $LINENO "$fontName.j.sfd : Multiple StartChars, test failed. =============="
+		err $LINENO "$fontName.${suffix}.sfd : Multiple StartChars, test failed. =============="
 	fi
 
 	echo ""
@@ -128,16 +130,15 @@ do
 	
 done < fonts.lst
 
-log $LINENO "Stats against Rachana.j.sfd"
-	grep "StartChar" Rachana.j.sfd |
-			awk -F": " '{print $2}' | sort > Rachana.j.srt
-echo ""
+log $LINENO "Stats against Rachana.${suffix}.sfd"
+	grep "StartChar" Rachana.${suffix}.sfd |
+			awk -F": " '{print $2}' | sort > Rachana.${suffix}.srt
 printf "%s\n" "-----------------------------------------------------------------------------------"
 printf "%-25s |%20s |%15s |%15s |\n" "Fonts v / Glyphs >" "Unique in Rachana" "Unique in Font2" "Common"
 printf "%s\n" "-----------------------------------------------------------------------------------"
 while read fontFile
 do
-	refSrt=Rachana.j.srt
+	refSrt=Rachana.${suffix}.srt
 	fontName=`basename $fontFile .sfd`
 	grep "StartChar" ${fontName}.sfd |
 			awk -F": " '{print $2}' | sort > ${fontName}.srt 
@@ -147,12 +148,12 @@ do
 	printf "%-25s |%20s |%15s |%15s |\n" ${fontName}	${uniq1} ${uniq2} ${common}
 
 
-	grep "StartChar" ${fontName}.j.sfd |
-			awk -F": " '{print $2}' | sort > ${fontName}.j.srt 
-	uniq1=`comm -23 ${refSrt} ${fontName}.j.srt | wc -l`
-	uniq2=`comm -13 ${refSrt} ${fontName}.j.srt | wc -l`
-	common=`comm -12 ${refSrt} ${fontName}.j.srt | wc -l`
-	printf "%-25s |%20s |%15s |%15s |\n" ${fontName}.j ${uniq1} ${uniq2} ${common}
+	grep "StartChar" ${fontName}.${suffix}.sfd |
+			awk -F": " '{print $2}' | sort > ${fontName}.${suffix}.srt 
+	uniq1=`comm -23 ${refSrt} ${fontName}.${suffix}.srt | wc -l`
+	uniq2=`comm -13 ${refSrt} ${fontName}.${suffix}.srt | wc -l`
+	common=`comm -12 ${refSrt} ${fontName}.${suffix}.srt | wc -l`
+	printf "%-25s |%20s |%15s |%15s |\n" ${fontName}.${suffix} ${uniq1} ${uniq2} ${common}
 	printf "%s\n" "-----------------------------------------------------------------------------------"
 
 done < fonts.lst
