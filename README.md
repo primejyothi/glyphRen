@@ -36,4 +36,6 @@ As the script generates a bunch of files during the tests, it would be a good id
 
 make docs (requires doxygen) will create documentation in docs folder.
 
+#### Acknowledgement
 
+aglfn.nam & glyphlist.nam provided by Crissov (https://github.com/Crissov)
