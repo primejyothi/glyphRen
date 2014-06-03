@@ -12,6 +12,9 @@ glyphRen -r referenceFile -i inputSFDName -o outputSFDName
 
 	-l : Log level (DBG or TRACE)
 	-h : Display the help message
+	-r : Reference file containing glyph names
+	-i : Input SFD file
+	-o : Output SFD file
 
 The reference file is a plain text file which contains the Unicode code point values in hex and the corresponding names. The fields are separated by spaces and records are separated by new lines. The reference file for a font can be generated from the font's SFD file using FontForge (Encoding->Save Namelist of Font).
 
